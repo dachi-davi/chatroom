@@ -11,7 +11,7 @@ public class Server {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("enter the port: ");
+        System.out.print("Enter the port: ");
         int port = scanner.nextInt();
         try (ServerSocket server = new ServerSocket(port)) {
             System.out.println("Server started");
@@ -30,7 +30,7 @@ public class Server {
     static void addClient(ClientHandler clientHandler) {
         clients.put(clientHandler.id, clientHandler);
         messageAll("Client number " + clientHandler.getID() + " has joined the chatroom", clientHandler);
-
+        messageAll("Currently there are " + ClientHandler.clientAmount +" users",clientHandler);
     }
 
     static synchronized void messageAll(String string, ClientHandler sender) {
@@ -51,14 +51,16 @@ public class Server {
         private ObjectInputStream input;
         private final Socket socket;
         private String id;
-        private static int clientNumber = 0;
+        private static int clientNumber = 1;
         private String nickname;
+        private static int clientAmount = 0;
 
         ClientHandler(Socket socket) {
             this.socket = socket;
             this.id = String.valueOf(clientNumber);
             clientNumber++;
-            this.nickname = "anonymus";
+            this.nickname = "anonymus" + id;
+            clientAmount++;
         }
 
         @Override
@@ -82,33 +84,35 @@ public class Server {
                     } else messageAll(this.nickname + ": " + message, this);
                 }
 
-            } catch (IOException  | ClassNotFoundException e) {
-                System.out.println(getNickname() +" disconnected unexpectedly");
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println(getNickname() + " disconnected unexpectedly");
             }
         }
 
-        void commandList(){
+        void commandList() {
             String string = "/pm \n" +
                     "/nickname \n" +
                     "/leave";
             try {
                 output.writeObject(string);
-            }catch (IOException e){
-                System.out.println("couldn't write commands to client");
+            } catch (IOException e) {
+                System.out.println("Couldn't write commands to client");
             }
 
         }
 
-        synchronized void leaveHandler(){
+        synchronized void leaveHandler() {
+            sendMessage("Bye");
             clients.remove(id);
-            messageAll(nickname + " has left the chatroom",this);
-
+            messageAll(nickname + " has left the chatroom", this);
+            clientAmount--;
+            messageAll("Currently there are " + ClientHandler.clientAmount +" users",this);
             try {
                 input.close();
                 output.close();
                 socket.close();
             } catch (IOException e) {
-                System.out.println("couldn't close connections");
+                System.out.println("Couldn't close connections");
             }
 
         }
@@ -118,24 +122,30 @@ public class Server {
             for (ClientHandler clientHandler : clients.values()) {
                 if (clientHandler.getNickname().equals(name)) {
                     checker = false;
-                    sendMessage("this name is already taken");
+                    sendMessage("This name is already taken");
                 }
             }
-            if (checker)setNickname(name);
+            if (checker) {
+                messageAll(getNickname() + " has changed their name to " + name, this);
+                setNickname(name);
+            }
         }
 
         void sendPrivateMessage() {
             try {
-                sendMessage("who do you want to message: ");
+                boolean validName = false;
+                sendMessage("Who do you want to message: ");
                 String name = (String) input.readObject();
                 for (ClientHandler clientHandler : clients.values()) {
                     if (clientHandler.getNickname().equals(name)) {
-                        sendMessage("type your message to " + clientHandler.getNickname());
+                        sendMessage("Type your message to " + clientHandler.getNickname());
                         String message = (String) input.readObject();
-                        clientHandler.sendMessage(this.nickname+": " + message);
+                        clientHandler.sendMessage("pm from " + this.nickname + ": " + message);
+                        validName = true;
                         break;
                     }
                 }
+                if (!validName) sendMessage("Incorrect username");
             } catch (IOException e) {
                 System.out.println("couldn't send private message");
             } catch (ClassNotFoundException e) {

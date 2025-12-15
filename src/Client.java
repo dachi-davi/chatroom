@@ -8,20 +8,21 @@ public class Client {
         Scanner scanner = new Scanner(System.in);
         while (true){
             try {
-                System.out.println("to connect to the server enter the server ip: ");
-                String ip = scanner.next();
-                System.out.println("enter the port: ");
+                System.out.print("To connect to the server enter the server ip: ");
+                String ip = scanner.nextLine();
+                System.out.print("Enter the port: ");
                 int port = scanner.nextInt();
+                scanner.nextLine();
 
                 try (Socket socket = new Socket(ip,port)){
-                    System.out.println("connected to the chatRoom");
+                    System.out.println("Connected to the chatRoom");
 
                     ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
                     Thread listener = createListener(socket);
                     listener.start();
 
                     String input;
-                    while (!Objects.equals(input = scanner.next(), null)){
+                    while (!Objects.equals(input = scanner.nextLine(), null)){
                         output.writeObject(input);
                         output.flush();
                         if (input.equals("/leave"))break;
@@ -48,7 +49,7 @@ public class Client {
                     }
 
                 } catch (IOException | ClassNotFoundException e) {
-                    System.out.println("disconnected");
+
                 }
             }
         };
